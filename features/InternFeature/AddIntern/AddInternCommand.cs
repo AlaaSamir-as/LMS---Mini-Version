@@ -8,29 +8,6 @@ namespace LMS___Mini_Version.features.InternFeature.AddIntern
 {
     public record AddInternCommand(string FullName, string Email, int BirthYear, int TrackId) : IRequest<RequestResponse<int>>;
 
-    public sealed class AddInternValidationBehavior :
-        IPipelineBehavior<AddInternCommand, RequestResponse<int>>
-    {
-        private readonly IInternRegistrationValidator _validator;
-
-        public AddInternValidationBehavior(IInternRegistrationValidator validator)
-        {
-            _validator = validator;
-        }
-
-        public async Task<RequestResponse<int>> Handle(
-            AddInternCommand request,
-            CancellationToken cancellationToken,
-            RequestHandlerDelegate<RequestResponse<int>> next)
-        {
-            var errors = await _validator.ValidateAsync(request, cancellationToken);
-
-            return errors.Count > 0
-                ? RequestResponse<int>.Fail(400, errors)
-                : await next();
-        }
-    }
-
     public class AddInternCommandHandler : IRequestHandler<AddInternCommand, RequestResponse<int>>
     {
         private readonly IGeneralRepository<Intern> _internRepository;

@@ -9,30 +9,6 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.CompleteEnrollment
 {
     public record CompleteEnrollmentCommand(int EnrollmentId) : IRequest<RequestResponse>;
 
-    public sealed class CompleteEnrollmentValidationBehavior :
-        IPipelineBehavior<CompleteEnrollmentCommand, RequestResponse>
-    {
-        private readonly ICompleteEnrollmentValidator _validator;
-
-        public CompleteEnrollmentValidationBehavior(
-            ICompleteEnrollmentValidator validator)
-        {
-            _validator = validator;
-        }
-
-        public async Task<RequestResponse> Handle(
-            CompleteEnrollmentCommand request,
-            CancellationToken cancellationToken,
-            RequestHandlerDelegate<RequestResponse> next)
-        {
-            var errors = await _validator.ValidateAsync(request, cancellationToken);
-
-            return errors.Count > 0
-                ? RequestResponse.Fail(400, errors)
-                : await next();
-        }
-    }
-
     public sealed class CompleteEnrollmentCommandHandler
         : IRequestHandler<CompleteEnrollmentCommand, RequestResponse>
     {

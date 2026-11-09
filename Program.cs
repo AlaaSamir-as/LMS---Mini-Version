@@ -1,5 +1,5 @@
+using FluentValidation;
 using LMS___Mini_Version.Domain.Repositories;
-using LMS___Mini_Version.features.InternFeature.AddIntern;
 using LMS___Mini_Version.features.shared;
 using LMS___Mini_Version.Infrastructure.Repositories;
 using LMS___Mini_Version.Persistence;
@@ -22,10 +22,8 @@ namespace LMS___Mini_Version
 
             builder.Services.AddScoped(typeof(IGeneralRepository<>), typeof(GeneralRepository<>));
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            builder.Services.AddScoped<IInternRegistrationValidator, InternRegistrationValidator>();
-            builder.Services.AddTransient<
-                IPipelineBehavior<AddInternCommand, RequestResponse<int>>,
-                AddInternValidationBehavior>();
+            builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+            builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
             builder.Services.AddMediatR(typeof(Program).Assembly);
 

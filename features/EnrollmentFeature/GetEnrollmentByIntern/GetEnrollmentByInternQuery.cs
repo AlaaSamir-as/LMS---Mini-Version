@@ -9,29 +9,6 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.GetEnrollmentByIntern
 {
     public record GetEnrollmentByInternQuery(int InternId) : IRequest<RequestResponse<IEnumerable<InternEnrollmentDto>>>;
 
-    public sealed class GetEnrollmentByInternValidatorBehavior : 
-        IPipelineBehavior<GetEnrollmentByInternQuery, RequestResponse<IEnumerable<InternEnrollmentDto>>>
-    {
-        private readonly IGetInternEnrollmentValidator _validator;
-
-        public GetEnrollmentByInternValidatorBehavior(IGetInternEnrollmentValidator validator)
-        {
-            _validator = validator;
-        }
-
-        public async Task<RequestResponse<IEnumerable<InternEnrollmentDto>>> Handle(
-            GetEnrollmentByInternQuery request,
-            CancellationToken cancellationToken,
-            RequestHandlerDelegate<RequestResponse<IEnumerable<InternEnrollmentDto>>> next)
-        {
-            var errors = await _validator.ValidateAsync(request, cancellationToken);
-            
-            return errors.Count > 0
-                ? RequestResponse<IEnumerable<InternEnrollmentDto>>.Fail(400, errors)
-                : await next();
-        }
-    }
-
     public class GetEnrollmentByInternQueryHandler : IRequestHandler<GetEnrollmentByInternQuery, RequestResponse<IEnumerable<InternEnrollmentDto>>>
     {
         private readonly IGeneralRepository<Domain.Entities.Enrollment> _enrollmentRepository;

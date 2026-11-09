@@ -1,17 +1,11 @@
+using FluentValidation;
 using LMS___Mini_Version.Domain.Entities;
 using LMS___Mini_Version.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace LMS___Mini_Version.features.InternFeature.AddIntern
 {
-    public interface IInternRegistrationValidator
-    {
-        Task<IDictionary<string, string[]>> ValidateAsync(
-            AddInternCommand request,
-            CancellationToken cancellationToken);
-    }
-
-    public sealed class InternRegistrationValidator : IInternRegistrationValidator
+    public sealed class InternRegistrationValidator : AbstractValidator<AddInternCommand>
     {
         private readonly IGeneralRepository<Intern> _internRepository;
         private readonly IGeneralRepository<Track> _trackRepository;
