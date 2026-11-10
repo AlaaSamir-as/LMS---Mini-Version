@@ -54,7 +54,7 @@ namespace LMS___Mini_Version.Controllers
             var response = result.Success ? EndpointResponse<int>.OK(result.Data, 201, "Intern created successfully") :
                 EndpointResponse<int>.Fail(result.StatusCode, "Failed to create intern", result.Errors);
 
-            return response;
+            return StatusCode(response.StatusCode, response);
         }
 
         //[HttpPut("{id}")]
@@ -64,9 +64,9 @@ namespace LMS___Mini_Version.Controllers
         //}
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult<EndpointResponse>> Delete(int Id)
+        public async Task<ActionResult<EndpointResponse>> Delete(int id)
         {
-            var result = await Mediator.Send(new DeleteInternCommand(Id));
+            var result = await Mediator.Send(new DeleteInternCommand(id));
 
             return result.Success ? StatusCode(result.StatusCode, EndpointResponse.OK(result.StatusCode, "Intern deleted successfully")) :
                 StatusCode(result.StatusCode, EndpointResponse.Fail(result.StatusCode, "Failed to delete intern", result.Errors));
