@@ -7,43 +7,30 @@ namespace LMS___Mini_Version.features.InternFeature.AddIntern
 {
     public sealed class InternRegistrationValidator : AbstractValidator<AddInternCommand>
     {
-        private readonly IGeneralRepository<Intern> _internRepository;
-        private readonly IGeneralRepository<Track> _trackRepository;
-
         public InternRegistrationValidator(
             IGeneralRepository<Intern> internRepository,
             IGeneralRepository<Track> trackRepository)
         {
-            _internRepository = internRepository;
-            _trackRepository = trackRepository;
-        }
-
-        public async Task<IDictionary<string, string[]>> ValidateAsync(
-            AddInternCommand request,
-            CancellationToken cancellationToken)
-        {
-            var errors = new Dictionary<string, string[]>();
-            var normalizedEmail = request.Email.ToLowerInvariant();
-
-            if (await _internRepository.GetAll()
-                .AnyAsync(intern => intern.Email.ToLower() == normalizedEmail, cancellationToken))
-            {
-                errors[nameof(request.Email)] = new[]
+            RuleFor(x => x.Email)
+                .NotEmpty().WithMessage("Email is required.")
+                .EmailAddress().WithMessage("A valid email address is required.")
+                .MustAsync(async (email, cancellationToken) =>
                 {
-                    "An intern with this email already exists."
-                };
-            }
+                    if (string.IsNullOrWhiteSpace(email)) return true;
+                    var normalizedEmail = email.Trim().ToLowerInvariant();
+                    return !await internRepository.GetAll()
+                        .AnyAsync(intern => intern.Email.ToLower() == normalizedEmail, cancellationToken);
+                })
+                .WithMessage("An intern with this email already exists.");
 
-            var track = await _trackRepository.GetByIdAsync(request.TrackId);
-            if (track is null || !track.IsActive)
-            {
-                errors[nameof(request.TrackId)] = new[]
+            RuleFor(x => x.TrackId)
+                .GreaterThan(0).WithMessage("TrackId must be greater than 0.")
+                .MustAsync(async (trackId, cancellationToken) =>
                 {
-                    "The selected track does not exist or is not active."
-                };
-            }
-
-            return errors;
+                    var track = await trackRepository.GetByIdAsync(trackId);
+                    return track is not null && track.IsActive;
+                })
+                .WithMessage("The selected track does not exist or is not active.");
         }
     }
 }

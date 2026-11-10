@@ -50,16 +50,17 @@ namespace LMS___Mini_Version.Controllers
         //}
 
         [HttpPost]
-        public async Task<ActionResult<EndpointResponse>> Create(
-    [FromBody] AddTrackCommand command)
+        public async Task<ActionResult<EndpointResponse>> Create([FromBody] AddTrackCommand command)
         {
             var result = await _mediator.Send(command);
 
-            var response = EndpointResponse.OK( 201,
-                result.Success ? "Track created successfully" : "Failed to create track"
-            );
+            if (!result.Success)
+            {
+                return StatusCode(result.StatusCode,
+                    EndpointResponse.Fail(result.StatusCode, "Failed to create track", result.Errors));
+            }
 
-            return StatusCode(response.StatusCode, response);
+            return StatusCode(result.StatusCode, EndpointResponse.OK(result.StatusCode, "Track created successfully"));
         }
 
         //[HttpPut("{id}")]

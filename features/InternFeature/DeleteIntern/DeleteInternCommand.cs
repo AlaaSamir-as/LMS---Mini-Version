@@ -11,15 +11,17 @@ namespace LMS___Mini_Version.features.InternFeature.DeleteIntern
     {
         private readonly IGeneralRepository<Intern> _internRepository;
         private readonly IUnitOfWork _unitOfWork;
-        public DeleteInternCommandHandler(IGeneralRepository<Intern> internRepository)
+        public DeleteInternCommandHandler(IGeneralRepository<Intern> internRepository, IUnitOfWork unitOfWork)
         {
             _internRepository = internRepository;
+            _unitOfWork = unitOfWork;
         }
+
         public async Task<RequestResponse> Handle(DeleteInternCommand request, CancellationToken cancellationToken)
         {
             var intern = await _internRepository.GetByIdAsync(request.InternId);
 
-             _internRepository.Delete(intern);
+            _internRepository.Delete(intern);
             await _unitOfWork.SaveChangesAsync();
 
             return RequestResponse.OK();

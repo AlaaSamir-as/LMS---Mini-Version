@@ -1,21 +1,20 @@
 ﻿using FluentValidation;
 using LMS___Mini_Version.Domain.Entities;
 using LMS___Mini_Version.Domain.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace LMS___Mini_Version.features.EnrollmentFeature.GetEnrollmentByIntern
 {
     public sealed class GetInternEnrollmentValidator : AbstractValidator<GetEnrollmentByInternQuery>
     {
-        private readonly IGeneralRepository<Intern> _InternRepository;
-
         public GetInternEnrollmentValidator(
-            IGeneralRepository<Intern> InternRepository)
+            IGeneralRepository<Intern> internRepository)
         {
-            _InternRepository = InternRepository;
-
             RuleFor(request => request.InternId)
+                .GreaterThan(0)
+                .WithMessage("Intern ID must be greater than 0.")
                 .MustAsync(async (internId, cancellationToken) =>
-                    await _InternRepository.GetByIdAsync(internId) is not null)
+                    await internRepository.GetAll().AnyAsync(intern => intern.Id == internId, cancellationToken))
                 .WithMessage("Intern was not found.");
         }
     }

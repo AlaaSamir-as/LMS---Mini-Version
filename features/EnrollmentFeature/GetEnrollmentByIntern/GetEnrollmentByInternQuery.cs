@@ -22,6 +22,7 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.GetEnrollmentByIntern
         {
             var enrollments = await _enrollmentRepository.GetAll()
                 .Where(e => e.InternId == request.InternId)
+                .OrderByDescending(e => e.EnrollmentDate)
                 .Select(e => new InternEnrollmentDto
                 {
                     EnrollmentId = e.Id,
@@ -29,7 +30,7 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.GetEnrollmentByIntern
                     TrackName = e.Track.Name,
                     EnrollmentDate = e.EnrollmentDate.ToString("yyyy-MM-dd"),
                     EnrollmentStatus = e.Status.ToString()
-                }).OrderByDescending(e => e.EnrollmentDate)
+                })
                 .ToListAsync(cancellationToken);
 
             return RequestResponse<IEnumerable<InternEnrollmentDto>>.OK(enrollments);

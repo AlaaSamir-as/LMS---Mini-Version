@@ -1,5 +1,4 @@
 using FluentValidation;
-using FluentValidation.Results;
 using MediatR;
 
 namespace LMS___Mini_Version.features.shared
@@ -22,6 +21,7 @@ namespace LMS___Mini_Version.features.shared
             var validationContext = new ValidationContext<TRequest>(request);
             var validationResults = await Task.WhenAll(
                 _validators.Select(validator => validator.ValidateAsync(validationContext, cancellationToken)));
+
             var failures = validationResults
                 .SelectMany(result => result.Errors)
                 .Where(failure => failure is not null)
@@ -31,10 +31,10 @@ namespace LMS___Mini_Version.features.shared
                 return await next();
 
             var errors = failures
-                .GroupBy(failure => failure.PropertyName)
+                .GroupBy(failure => string.IsNullOrWhiteSpace(failure.PropertyName) ? "General" : failure.PropertyName)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Select(failure => failure.ErrorMessage).ToArray());
+                    group => group.Select(failure => failure.ErrorMessage).Distinct().ToArray());
 
             return CreateFailureResponse(errors);
         }
@@ -47,13 +47,18 @@ namespace LMS___Mini_Version.features.shared
             if (typeof(TResponse).IsGenericType &&
                 typeof(TResponse).GetGenericTypeDefinition() == typeof(RequestResponse<>))
             {
-                return (TResponse)typeof(TResponse)
-                    .GetMethod(nameof(RequestResponse<int>.Fail))!
-                    .Invoke(null, new object?[] { 400, errors })!;
+                var failMethod = typeof(TResponse).GetMethod(
+                    nameof(RequestResponse<object>.Fail),
+                    new[] { typeof(int), typeof(IDictionary<string, string[]>) });
+
+                if (failMethod is not null)
+                {
+                    return (TResponse)failMethod.Invoke(null, new object?[] { 400, errors })!;
+                }
             }
 
             throw new InvalidOperationException(
-                $"FluentValidation response type '{typeof(TResponse).Name}' is not supported.");
+                $"FluentValidation response type '{typeof(TResponse).Name}' is not supported. Expected RequestResponse or RequestResponse<T>.");
         }
     }
 }
