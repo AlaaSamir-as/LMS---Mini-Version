@@ -1,6 +1,7 @@
 
 using LMS___Mini_Version.features.shared;
 using LMS___Mini_Version.features.TrackFeature.AddTrack.Commands;
+using LMS___Mini_Version.features.TrackFeature.AddTrack.ViewModels;
 using LMS___Mini_Version.features.TrackFeature.GetAllTracks.Dtos;
 using LMS___Mini_Version.features.TrackFeature.GetAllTracks.Query;
 using LMS___Mini_Version.features.TrackFeature.GetAllTracks.ViewModels;
@@ -19,15 +20,18 @@ namespace LMS___Mini_Version.Controllers
             _mediator = mediator;
         }
         [HttpGet]
-        public async Task<ActionResult<EndpointResponse<IEnumerable<TrackViewModel>>>> GetAll()
+        public async Task<ActionResult<EndpointResponse<IEnumerable<TrackViewModel>>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _mediator.Send(new GetAllTracksQuery(1, 20));
+            int safePageNumber = pageNumber < 1 ? 1 : pageNumber;
+            int safePageSize = pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+
+            var result = await _mediator.Send(new GetAllTracksQuery(safePageNumber, safePageSize));
 
             if (!result.Success)
                 return StatusCode(result.StatusCode,
                     EndpointResponse.Fail(result.StatusCode, "Failed to get tracks", result.Errors));
 
-            var tracksVM = result.Data.Select(x => new TrackViewModel
+            var tracksVM = (result.Data ?? Enumerable.Empty<TrackDto>()).Select(x => new TrackViewModel
             {
                 id = x.id,
                 name = x.name
@@ -50,8 +54,9 @@ namespace LMS___Mini_Version.Controllers
         //}
 
         [HttpPost]
-        public async Task<ActionResult<EndpointResponse>> Create([FromBody] AddTrackCommand command)
+        public async Task<ActionResult<EndpointResponse>> Create([FromBody] CreateTrackRequestVM request)
         {
+            var command = new AddTrackCommand(request.Name, request.Fees, request.MaxCapacity);
             var result = await _mediator.Send(command);
 
             if (!result.Success)

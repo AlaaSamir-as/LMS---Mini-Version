@@ -36,13 +36,75 @@ namespace LMS___Mini_Version.features.shared
                     group => group.Key,
                     group => group.Select(failure => failure.ErrorMessage).Distinct().ToArray());
 
-            return CreateFailureResponse(errors);
+            int statusCode = DetermineStatusCode(failures);
+
+            return CreateFailureResponse(errors, statusCode);
         }
 
-        private static TResponse CreateFailureResponse(IDictionary<string, string[]> errors)
+        private static int DetermineStatusCode(List<ValidationFailure> failures)
+        {
+            var detectedCodes = new HashSet<int>();
+
+            foreach (var failure in failures)
+            {
+                if (int.TryParse(failure.ErrorCode, out int parsedCode))
+                {
+                    detectedCodes.Add(parsedCode);
+                    continue;
+                }
+
+                if (failure.CustomState is int stateCode)
+                {
+                    detectedCodes.Add(stateCode);
+                    continue;
+                }
+
+                var errorCode = failure.ErrorCode?.ToLowerInvariant() ?? "";
+                if (errorCode.Contains("notfound") || errorCode == "404")
+                {
+                    detectedCodes.Add(404);
+                    continue;
+                }
+                if (errorCode.Contains("conflict") || errorCode == "409")
+                {
+                    detectedCodes.Add(409);
+                    continue;
+                }
+
+                var msg = failure.ErrorMessage?.ToLowerInvariant() ?? "";
+                if (msg.Contains("not found") || msg.Contains("does not exist"))
+                {
+                    detectedCodes.Add(404);
+                    continue;
+                }
+                if (msg.Contains("already") || msg.Contains("conflict") || msg.Contains("cannot delete") ||
+                    msg.Contains("cancelled") || msg.Contains("is not active"))
+                {
+                    detectedCodes.Add(409);
+                    continue;
+                }
+
+                detectedCodes.Add(400);
+            }
+
+            // Priority:
+            // 1. 400 Bad Request (Input / format errors)
+            // 2. 404 Not Found (Entity does not exist)
+            // 3. 409 Conflict (Duplicate, invalid state transition, business rule violation)
+            if (detectedCodes.Contains(400))
+                return 400;
+            if (detectedCodes.Contains(404))
+                return 404;
+            if (detectedCodes.Contains(409))
+                return 409;
+
+            return detectedCodes.FirstOrDefault(400);
+        }
+
+        private static TResponse CreateFailureResponse(IDictionary<string, string[]> errors, int statusCode)
         {
             if (typeof(TResponse) == typeof(RequestResponse))
-                return (TResponse)(object)RequestResponse.Fail(400, errors);
+                return (TResponse)(object)RequestResponse.Fail(statusCode, errors);
 
             if (typeof(TResponse).IsGenericType &&
                 typeof(TResponse).GetGenericTypeDefinition() == typeof(RequestResponse<>))
@@ -53,7 +115,7 @@ namespace LMS___Mini_Version.features.shared
 
                 if (failMethod is not null)
                 {
-                    return (TResponse)failMethod.Invoke(null, new object?[] { 400, errors })!;
+                    return (TResponse)failMethod.Invoke(null, new object?[] { statusCode, errors })!;
                 }
             }
 

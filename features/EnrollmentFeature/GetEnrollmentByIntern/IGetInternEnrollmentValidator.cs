@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using LMS___Mini_Version.Domain.Entities;
 using LMS___Mini_Version.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +13,11 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.GetEnrollmentByIntern
             RuleFor(request => request.InternId)
                 .GreaterThan(0)
                 .WithMessage("Intern ID must be greater than 0.")
+                .WithErrorCode("400")
                 .MustAsync(async (internId, cancellationToken) =>
                     await internRepository.GetAll().AnyAsync(intern => intern.Id == internId, cancellationToken))
-                .WithMessage("Intern was not found.");
+                .WithMessage("Intern was not found.")
+                .WithErrorCode("404");
         }
     }
 }

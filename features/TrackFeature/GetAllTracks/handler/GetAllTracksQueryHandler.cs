@@ -1,4 +1,4 @@
-﻿using LMS___Mini_Version.Domain.Entities;
+using LMS___Mini_Version.Domain.Entities;
 using LMS___Mini_Version.Domain.Repositories;
 using LMS___Mini_Version.features.shared;
 using LMS___Mini_Version.features.TrackFeature.GetAllTracks.Dtos;
@@ -17,12 +17,15 @@ namespace LMS___Mini_Version.features.TrackFeature.GetAllTracks.handler
         }
         public async Task<RequestResponse<IEnumerable<TrackDto>>> Handle(GetAllTracksQuery request, CancellationToken cancellationToken)
         {
+            int safePageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            int safePageSize = request.PageSize < 1 ? 10 : (request.PageSize > 100 ? 100 : request.PageSize);
 
             var tracks = await _repository.GetAll()
-                .Skip((request.pageindex - 1) * request.pagesize)
-                .Take(request.pagesize)
-                .ToListAsync();
-
+                .AsNoTracking()
+                .OrderBy(x => x.Id)
+                .Skip((safePageNumber - 1) * safePageSize)
+                .Take(safePageSize)
+                .ToListAsync(cancellationToken);
 
             var tracksdto = tracks.Select(x =>
             new TrackDto
@@ -31,7 +34,7 @@ namespace LMS___Mini_Version.features.TrackFeature.GetAllTracks.handler
                 id = x.Id,
                 name = x.Name,
                 MaxCapacity = x.MaxCapacity,
-                totalenrollment = x.Enrollments.Count()
+                totalenrollment = x.Enrollments.Count
 
             });
 

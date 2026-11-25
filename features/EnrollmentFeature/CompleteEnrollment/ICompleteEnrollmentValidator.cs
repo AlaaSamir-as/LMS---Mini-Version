@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+using FluentValidation;
+using FluentValidation.Results;
 using LMS___Mini_Version.Domain.Entities;
 using LMS___Mini_Version.Domain.Enums;
 using LMS___Mini_Version.Domain.Repositories;
@@ -13,37 +14,73 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.CompleteEnrollment
         {
             RuleFor(request => request.EnrollmentId)
                 .GreaterThan(0).WithMessage("Enrollment ID must be greater than 0.")
+                .WithErrorCode("400")
                 .CustomAsync(async (enrollmentId, context, cancellationToken) =>
                 {
-                    var enrollment = await enrollmentRepository.GetAll().Select(e =>
-                        new Enrollment
+                    var enrollment = await enrollmentRepository.GetAll()
+                        .Where(e => e.Id == enrollmentId)
+                        .Select(e => new
                         {
-                            Id = e.Id,
-                            Status = e.Status,
-                            Track = new Track
-                            {
-                                Fees = e.Track.Fees
-                            },
-                            Payment = new Payment
-                            {
-                                Status = e.Payment.Status
-                            }
+                            e.Id,
+                            e.Status,
+                            HasPayment = e.Payment != null,
+                            PaymentStatus = e.Payment != null ? (PaymentStatus?)e.Payment.Status : null
                         })
-                        .FirstOrDefaultAsync(e => e.Id == enrollmentId, cancellationToken);
+                        .FirstOrDefaultAsync(cancellationToken);
 
-                    var errorMessage = enrollment switch
+                    if (enrollment is null)
                     {
-                        null => "Enrollment was not found.",
-                        { Status: EnrollmentStatus.Completed } => "Enrollment is already completed.",
-                        { Status: EnrollmentStatus.Cancelled } => "Enrollment is cancelled.",
-                        { Status: not EnrollmentStatus.Active } => "Only an active enrollment can be completed.",
-                        { Track: { Fees: > 0 }, Payment: not { Status: PaymentStatus.Completed } } => "The enrollment must have a completed payment.",
-                        { Payment: { Status: not PaymentStatus.Completed } } => "The enrollment payment is not completed.",
-                        _ => null
-                    };
+                        context.AddFailure(new ValidationFailure(nameof(CompleteEnrollmentCommand.EnrollmentId), "Enrollment was not found.")
+                        {
+                            ErrorCode = "404"
+                        });
+                        return;
+                    }
 
-                    if (errorMessage is not null)
-                        context.AddFailure(nameof(CompleteEnrollmentCommand.EnrollmentId), errorMessage);
+                    if (enrollment.Status == EnrollmentStatus.Completed)
+                    {
+                        context.AddFailure(new ValidationFailure(nameof(CompleteEnrollmentCommand.EnrollmentId), "Enrollment is already completed.")
+                        {
+                            ErrorCode = "409"
+                        });
+                        return;
+                    }
+
+                    if (enrollment.Status == EnrollmentStatus.Cancelled)
+                    {
+                        context.AddFailure(new ValidationFailure(nameof(CompleteEnrollmentCommand.EnrollmentId), "Enrollment is cancelled.")
+                        {
+                            ErrorCode = "409"
+                        });
+                        return;
+                    }
+
+                    if (enrollment.Status != EnrollmentStatus.Active)
+                    {
+                        context.AddFailure(new ValidationFailure(nameof(CompleteEnrollmentCommand.EnrollmentId), "Only an active enrollment can be completed.")
+                        {
+                            ErrorCode = "409"
+                        });
+                        return;
+                    }
+
+                    if (!enrollment.HasPayment)
+                    {
+                        context.AddFailure(new ValidationFailure("Payment", "The enrollment must have a completed payment.")
+                        {
+                            ErrorCode = "409"
+                        });
+                        return;
+                    }
+
+                    if (enrollment.PaymentStatus != PaymentStatus.Completed)
+                    {
+                        context.AddFailure(new ValidationFailure("Payment", "The enrollment payment is not completed.")
+                        {
+                            ErrorCode = "409"
+                        });
+                        return;
+                    }
                 });
         }
     }

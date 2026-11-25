@@ -1,5 +1,5 @@
-
 using LMS___Mini_Version.features.InternFeature.AddIntern;
+using LMS___Mini_Version.features.InternFeature.AddIntern.VM;
 using LMS___Mini_Version.features.InternFeature.DeleteIntern;
 using LMS___Mini_Version.features.InternFeature.GetAllInterns;
 using LMS___Mini_Version.features.InternFeature.GetAllInterns.VM;
@@ -21,23 +21,31 @@ namespace LMS___Mini_Version.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<EndpointResponse<IEnumerable<InternVM>>>> GetAll()
+        public async Task<ActionResult<EndpointResponse<PaginatedResult<InternVM>>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await Mediator.Send(new GetAllInternsQuery(1, 20));
+            int safePageNumber = pageNumber < 1 ? 1 : pageNumber;
+            int safePageSize = pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+
+            var result = await Mediator.Send(new GetAllInternsQuery(safePageNumber, safePageSize));
             if (!result.Success)
                 return StatusCode(result.StatusCode,
                     EndpointResponse.Fail(result.StatusCode, "Failed to get interns", result.Errors));
 
-            var internsVM = result.Data.Select(x => new InternVM
-            {
-                Id = x.Id,
-                FullName = x.FullName,
-                Email = x.Email,
-                Status = x.Status,
-                TrackName = x.TrackName
-            });
+            var internsVM = new PaginatedResult<InternVM>(
+                result.Data!.Items.Select(x => new InternVM
+                {
+                    Id = x.Id,
+                    FullName = x.FullName,
+                    Email = x.Email,
+                    Status = x.Status,
+                    TrackName = x.TrackName
+                }),
+                result.Data.TotalCount,
+                result.Data.PageNumber,
+                result.Data.PageSize
+            );
 
-            return StatusCode(result.StatusCode, EndpointResponse<IEnumerable<InternVM>>.OK(internsVM, result.StatusCode, "success"));
+            return StatusCode(result.StatusCode, EndpointResponse<PaginatedResult<InternVM>>.OK(internsVM, result.StatusCode, "success"));
         }
 
         //[HttpGet("{id}")]
@@ -47,8 +55,9 @@ namespace LMS___Mini_Version.Controllers
         //}
 
         [HttpPost]
-        public async Task<ActionResult<EndpointResponse<int>>> Create([FromBody] AddInternCommand command)
+        public async Task<ActionResult<EndpointResponse<int>>> Create([FromBody] CreateInternRequestVM request)
         {
+            var command = new AddInternCommand(request.FullName, request.Email, request.BirthYear, request.TrackId);
             var result = await Mediator.Send(command);
 
             var response = result.Success ? EndpointResponse<int>.OK(result.Data, 201, "Intern created successfully") :

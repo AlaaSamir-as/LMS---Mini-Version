@@ -30,6 +30,36 @@ namespace LMS___Mini_Version.features.EnrollmentFeature.CompleteEnrollment
             var enrollment = await _enrollmentRepository.GetAll()
                 .SingleOrDefaultAsync(e => e.Id == request.EnrollmentId, cancellationToken);
 
+            if (enrollment is null)
+                return RequestResponse.Fail(404, new Dictionary<string, string[]>
+                {
+                    [nameof(request.EnrollmentId)] = ["Enrollment was not found."]
+                });
+
+            if (enrollment.Status == EnrollmentStatus.Completed)
+                return RequestResponse.Fail(409, new Dictionary<string, string[]>
+                {
+                    [nameof(enrollment.Status)] = ["Enrollment is already completed."]
+                });
+
+            if (enrollment.Status == EnrollmentStatus.Cancelled)
+                return RequestResponse.Fail(409, new Dictionary<string, string[]>
+                {
+                    [nameof(enrollment.Status)] = ["Enrollment is cancelled."]
+                });
+
+            if (enrollment.Status != EnrollmentStatus.Active)
+                return RequestResponse.Fail(409, new Dictionary<string, string[]>
+                {
+                    [nameof(enrollment.Status)] = ["Only an active enrollment can be completed."]
+                });
+
+            if (enrollment.Payment is null || enrollment.Payment.Status != PaymentStatus.Completed)
+                return RequestResponse.Fail(409, new Dictionary<string, string[]>
+                {
+                    ["Payment"] = ["The enrollment must have a completed payment."]
+                });
+
             enrollment.Status = EnrollmentStatus.Completed;
             await _unitOfWork.SaveChangesAsync();
 
